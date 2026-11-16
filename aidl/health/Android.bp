@@ -26,6 +26,7 @@ cc_binary {
     vendor: true,
     init_rc: ["android.hardware.health-service.mediatek.rc"],
     overrides: ["charger"],
+    ldflags: ["-Wl,--wrap=_Z11gr_fb_blankbi"],
 }
 
 cc_binary {

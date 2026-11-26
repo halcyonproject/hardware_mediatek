@@ -24,11 +24,6 @@
 #include <C2Component.h>
 #include <C2Config.h>
 
-// HIDL
-#include <binder/ProcessState.h>
-#include <codec2/hidl/1.2/ComponentStore.h>
-#include <hidl/HidlTransportSupport.h>
-
 // AIDL
 #include <android/binder_manager.h>
 #include <android/binder_process.h>
@@ -179,7 +174,14 @@ private:
     Interface mInterface;
 };
 
-void runAidlService() {
+int main(int /* argc */, char** /* argv */) {
+    const bool aidlEnabled = ::aidl::android::hardware::media::c2::utils::IsSelected();
+    LOG(DEBUG) << "android.hardware.media.c2-V1-service starting...";
+
+    // Set up minijail to limit system calls.
+    signal(SIGPIPE, SIG_IGN);
+    android::SetUpMinijail(kBaseSeccompPolicyPath, kExtSeccompPolicyPath);
+
     ABinderProcess_setThreadPoolMaxThreadCount(kThreadCount);
     ABinderProcess_startThreadPool();
 
@@ -209,56 +211,6 @@ void runAidlService() {
     }
 
     ABinderProcess_joinThreadPool();
-}
 
-void runHidlService() {
-    using namespace ::android;
-
-    // Enable vndbinder to allow vendor-to-vendor binder calls.
-    ProcessState::initWithDriver("/dev/vndbinder");
-
-    ProcessState::self()->startThreadPool();
-    hardware::configureRpcThreadpool(kThreadCount, true /* callerWillJoin */);
-
-    // Create IComponentStore service.
-    {
-        using namespace ::android::hardware::media::c2::V1_2;
-        sp<IComponentStore> store;
-
-        LOG(DEBUG) << "Instantiating Codec2's IComponentStore service...";
-        store = new utils::ComponentStore(
-                android::GetCodec2MtkComponentStore());
-
-        if (store == nullptr) {
-            LOG(ERROR) << "Cannot create Codec2's IComponentStore service.";
-        } else {
-            constexpr char const* serviceName = "default";
-            if (store->registerAsService(serviceName) != OK) {
-                LOG(ERROR) << "Cannot register Codec2's IComponentStore service"
-                              " with instance name << \""
-                           << serviceName << "\".";
-            } else {
-                LOG(DEBUG) << "Codec2's IComponentStore service registered. "
-                              "Instance name: \"" << serviceName << "\".";
-            }
-        }
-    }
-
-    hardware::joinRpcThreadpool();
-}
-
-int main(int /* argc */, char** /* argv */) {
-    const bool aidlEnabled = ::aidl::android::hardware::media::c2::utils::IsSelected();
-    LOG(DEBUG) << "android.hardware.media.c2" << (aidlEnabled ? "-V1" : "@1.2")
-               << "-service starting...";
-
-    // Set up minijail to limit system calls.
-    signal(SIGPIPE, SIG_IGN);
-    android::SetUpMinijail(kBaseSeccompPolicyPath, kExtSeccompPolicyPath);
-    if (aidlEnabled) {
-        runAidlService();
-    } else {
-        runHidlService();
-    }
     return 0;
 }

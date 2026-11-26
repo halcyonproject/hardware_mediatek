@@ -12,7 +12,6 @@ cc_binary {
     vintf_fragments: ["manifest_media_c2_mtk.xml"],
 
     defaults: [
-        "libcodec2-hidl-defaults",
         "libcodec2-aidl-defaults",
     ],
 
@@ -28,7 +27,6 @@ cc_binary {
 
     shared_libs: [
         "libavservices_minijail",
-        "libbinder",
         "libbinder_ndk",
         "libcodec2_mtk_c2store",
         "libcodec2_mtk_vdec",
